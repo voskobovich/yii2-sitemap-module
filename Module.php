@@ -119,7 +119,7 @@ class Module extends \yii\base\Module
                 $model = new $modelName;
             }
 
-            $urls = array_merge($urls, $model->generateSiteMap());
+            $urls = array_merge($urls, $model->sitemapData());
         }
 
         return $urls;
