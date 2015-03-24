@@ -116,7 +116,7 @@ class SitemapBehavior extends Behavior
         $owner = $this->owner;
         $query = $owner::find();
 
-        $basePath = $this->module->getBasePath();
+        $basePath = $this->module->getFilesPath();
         preg_match('/([A-Za-z]+)$/', get_class($owner), $matchResult);
         $fileSuffix = strtolower($matchResult[0]);
 
