@@ -57,18 +57,15 @@ class Module extends \yii\base\Module
             if (is_array($configItem)) {
                 /** @var \yii\db\ActiveRecord $model */
                 $model = new $configItem['class'];
-
-                if (isset($configItem['behaviors'])) {
-                    $model->attachBehaviors([
-                        'sitemap' => ArrayHelper::merge(
-                            $configItem['config'],
-                            [
-                                'class' => SitemapBehavior::className(),
-                                'module' => $this,
-                            ]
-                        )
-                    ]);
-                }
+                $model->attachBehaviors([
+                    'sitemap' => ArrayHelper::merge(
+                        $configItem['config'],
+                        [
+                            'class' => SitemapBehavior::className(),
+                            'module' => $this,
+                        ]
+                    )
+                ]);
 
                 $this->_models[] = $model;
             }
