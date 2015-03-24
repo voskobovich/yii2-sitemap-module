@@ -38,7 +38,7 @@ class Module extends \yii\base\Module
      * The number of links on the page
      * @var int
      */
-    public $perPage = 10000;
+    public $perPage = 2000;
 
     /**
      * Prepared models

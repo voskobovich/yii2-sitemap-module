@@ -117,7 +117,8 @@ class SitemapBehavior extends Behavior
         $query = $owner::find();
 
         $basePath = $this->module->getBasePath();
-        $fileSuffix = $owner::formName();
+        preg_match('/([A-Za-z]+)$/', get_class($owner), $matchResult);
+        $fileSuffix = strtolover($matchResult[0]);
 
         // Apply scopes
         if (is_callable($this->scope)) {
