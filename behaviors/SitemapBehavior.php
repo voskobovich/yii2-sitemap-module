@@ -2,6 +2,7 @@
 
 namespace voskobovich\sitemap\behaviors;
 
+use Yii;
 use yii\data\ActiveDataProvider;
 use yii\base\Behavior;
 use yii\base\InvalidConfigException;
