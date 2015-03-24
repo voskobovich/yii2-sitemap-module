@@ -2,6 +2,7 @@
 
 namespace voskobovich\sitemap\behaviors;
 
+use yii\data\ActiveDataProvider;
 use yii\base\Behavior;
 use yii\base\InvalidConfigException;
 
@@ -52,12 +53,6 @@ class SitemapBehavior extends Behavior
     const CHANGEFREQ_NEVER = 'never';
 
     /**
-     * The number of selected models
-     * for the request to the database
-     */
-    const BATCH_MAX_SIZE = 100;
-
-    /**
      * Data format for the construction
      * of links to the map
      * Example:
@@ -94,6 +89,12 @@ class SitemapBehavior extends Behavior
     public $scope;
 
     /**
+     * Sitemap module instance
+     * @var \voskobovich\sitemap\Module
+     */
+    public $module = null;
+
+    /**
      * Init behavior
      * @throws InvalidConfigException
      */
@@ -105,53 +106,96 @@ class SitemapBehavior extends Behavior
     }
 
     /**
-     * Build data for model
+     * Create sitemap files
      * @return array
      */
-    public function sitemapData()
+    public function buildPages()
     {
-        $result = [];
-        $n = 0;
-
         /** @var \yii\db\ActiveRecord $owner */
         $owner = $this->owner;
         $query = $owner::find();
+
+        $basePath = $this->module->getBasePath();
+        $fileSuffix = $owner::formName();
+
+        // Apply scopes
         if (is_callable($this->scope)) {
             call_user_func($this->scope, $query);
         }
 
-        foreach ($query->each(self::BATCH_MAX_SIZE) as $model) {
-            $urlData = call_user_func($this->dataClosure, $model);
+        // Build data provider for separated on pages
+        $dataProvider = new ActiveDataProvider([
+            'query' => $query,
+            'pagination' => [
+                'pageSize' => $this->module->perPage,
+                /*
+                 * Break up a large sitemap into a set of smaller sitemaps to prevent your
+                 * server from being overloaded by serving a large file to Google. A sitemap
+                 * file can't contain more than 50,000 URLs and must be no larger than 50 MB
+                 * uncompressed.
+                 * Source: https://support.google.com/webmasters/answer/183668?hl=en
+                 */
+                'pageSizeLimit' => [10, 50000]
+            ],
+        ]);
 
-            if (empty($urlData)) {
-                continue;
+        // Build pages
+        $pages = [];
+
+        $dataProvider->prepare();
+        $pageCount = $dataProvider->pagination->getPageCount();
+
+        for ($page = 0; $page < $pageCount; $page++) {
+            $dataProvider->pagination->setPage($page);
+            $dataProvider->prepare(true);
+
+            // Processing one page
+            $pageUrls = [];
+            $n = 0;
+
+            foreach ($dataProvider->getModels() as $model) {
+                $urlData = call_user_func($this->dataClosure, $model);
+
+                $pageUrls[$n]['loc'] = $urlData['loc'];
+                $pageUrls[$n]['lastmod'] = $urlData['lastmod'];
+
+                if (isset($urlData['changefreq'])) {
+                    $pageUrls[$n]['changefreq'] = $urlData['changefreq'];
+                } elseif ($this->defaultChangefreq !== false) {
+                    $pageUrls[$n]['changefreq'] = $this->defaultChangefreq;
+                }
+
+                if (isset($urlData['priority'])) {
+                    $pageUrls[$n]['priority'] = $urlData['priority'];
+                } elseif ($this->defaultPriority !== false) {
+                    $pageUrls[$n]['priority'] = $this->defaultPriority;
+                }
+
+                if (isset($urlData['news'])) {
+                    $pageUrls[$n]['news'] = $urlData['news'];
+                }
+                if (isset($urlData['images'])) {
+                    $pageUrls[$n]['images'] = $urlData['images'];
+                }
+
+                ++$n;
             }
 
-            $result[$n]['loc'] = $urlData['loc'];
-            $result[$n]['lastmod'] = $urlData['lastmod'];
+            $xmlData = Yii::$app->view->renderPhpFile(
+                $this->module->viewPath . '/default/page-template.php',
+                ['urls' => $pageUrls]
+            );
 
-            if (isset($urlData['changefreq'])) {
-                $result[$n]['changefreq'] = $urlData['changefreq'];
-            } elseif ($this->defaultChangefreq !== false) {
-                $result[$n]['changefreq'] = $this->defaultChangefreq;
-            }
+            $fileName = "/{$this->module->getPartsPath()}/{$fileSuffix}_{$page}.xml";
 
-            if (isset($urlData['priority'])) {
-                $result[$n]['priority'] = $urlData['priority'];
-            } elseif ($this->defaultPriority !== false) {
-                $result[$n]['priority'] = $this->defaultPriority;
+            if (file_put_contents("{$basePath}/{$fileName}", $xmlData)) {
+                $pages[] = [
+                    'loc' => $fileName,
+                    'lastmod' => time()
+                ];
             }
-
-            if (isset($urlData['news'])) {
-                $result[$n]['news'] = $urlData['news'];
-            }
-            if (isset($urlData['images'])) {
-                $result[$n]['images'] = $urlData['images'];
-            }
-
-            ++$n;
         }
 
-        return $result;
+        return $pages;
     }
 }

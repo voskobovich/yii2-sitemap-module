@@ -2,10 +2,9 @@
 
 namespace voskobovich\sitemap;
 
+use voskobovich\sitemap\behaviors\SitemapBehavior;
 use Yii;
-use yii\base\InvalidConfigException;
-use yii\caching\Cache;
-use yii\db\ActiveRecord;
+use yii\helpers\ArrayHelper;
 
 
 /**
@@ -24,34 +23,10 @@ class Module extends \yii\base\Module
     public $controllerNamespace = 'voskobovich\sitemap\controllers';
 
     /**
-     * Cache lifetime in seconds
-     * @var int
+     * Prepared model
+     * @var \yii\db\ActiveRecord[]
      */
-    public $cacheExpire = 86400;
-
-    /**
-     * Identifier cache provider
-     * @var Cache|string
-     */
-    public $cacheProvider = 'cache';
-
-    /**
-     * Key data in the cache storage
-     * @var string
-     */
-    public $cacheKey = 'sitemap';
-
-    /**
-     * Use php's gzip compressing.
-     * @var boolean
-     */
-    public $enableGzip = false;
-
-    /**
-     * Configuration models for data collection
-     * @var array
-     */
-    public $models = [];
+    public $prepareModels = [];
 
     /**
      * Configuration static urls for data collection
@@ -60,68 +35,70 @@ class Module extends \yii\base\Module
     public $urls = [];
 
     /**
-     * Folder name of parts sitemap
-     * @var string
-     */
-    public $pagesFolder = 'sitemap_pages';
-
-    /**
-     * File name template page sitemap
-     * @var string
-     */
-    public $pageFileName = 'page_';
-
-    /**
-     * File name sitemap
-     * @var string
-     */
-    public $sitemapFileName = 'sitemap';
-
-    /**
      * The number of links on the page
      * @var int
      */
     public $perPage = 10000;
 
     /**
-     * Init module
-     * @throws InvalidConfigException
+     * Prepared models
+     * @var array
      */
-    public function init()
+    private $_models = [];
+
+    /**
+     * Configuration models for data collection
+     * @param $config
+     * @return array
+     */
+    public function setModels($config)
     {
-        parent::init();
+        foreach ($config as $configItem) {
+            if (is_array($configItem)) {
+                /** @var \yii\db\ActiveRecord $model */
+                $model = new $configItem['class'];
 
-        if (is_string($this->cacheProvider)) {
-            $this->cacheProvider = Yii::$app->{$this->cacheProvider};
-        }
+                if (isset($configItem['behaviors'])) {
+                    $model->attachBehaviors([
+                        'sitemap' => ArrayHelper::merge(
+                            $configItem['config'],
+                            [
+                                'class' => SitemapBehavior::className(),
+                                'module' => $this,
+                            ]
+                        )
+                    ]);
+                }
 
-        if (!$this->cacheProvider instanceof Cache) {
-            throw new InvalidConfigException('Invalid `cacheKey` parameter was specified.');
+                $this->_models[] = $model;
+            }
         }
     }
 
     /**
-     * Build a site map.
-     * @return array
+     * Get prepared models
+     * @return \yii\db\ActiveRecord[]
      */
-    public function buildSitemap()
+    public function getModels()
     {
-        $urls = $this->urls;
+        return $this->_models;
+    }
 
-        foreach ($this->models as $modelName) {
-            if (is_array($modelName)) {
-                /** @var ActiveRecord $model */
-                $model = new $modelName['class'];
-                if (isset($modelName['behaviors'])) {
-                    $model->attachBehaviors($modelName['behaviors']);
-                }
-            } else {
-                $model = new $modelName;
-            }
+    /**
+     * Get base path for sitemap files
+     * @return mixed
+     */
+    public function getBasePath()
+    {
+        return Yii::getAlias('@app/../web');
+    }
 
-            $urls = array_merge($urls, $model->sitemapData());
-        }
-
-        return $urls;
+    /**
+     * Get base path for sitemap files
+     * @return mixed
+     */
+    public function getPartsPath()
+    {
+        return $this->getBasePath().'/sitemap_files';
     }
 }

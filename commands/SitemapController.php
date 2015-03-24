@@ -38,7 +38,7 @@ class SitemapController extends Controller
      * URI to sitemap file
      * @var string
      */
-    private $_pathSitemapFile = null;
+    private $_pathMainFile = null;
 
     /**
      * Init command
@@ -46,9 +46,9 @@ class SitemapController extends Controller
     public function init()
     {
         $this->_module = Yii::$app->getModule('sitemap');
-        $this->_baseDir = Yii::getAlias('@app/../web');
-        $this->_pageDir = "{$this->_baseDir}/{$this->_module->pagesFolder}";
-        $this->_pathSitemapFile = "{$this->_baseDir}/{$this->_module->sitemapFileName}.xml";
+        $this->_baseDir = $this->_module->getBasePath();
+        $this->_pageDir = $this->_module->getPartsPath();
+        $this->_pathMainFile = "{$this->_baseDir}/sitemap.xml";
     }
 
     /**
@@ -76,56 +76,21 @@ class SitemapController extends Controller
         // Delete old files
         $this->deleteFiles();
 
-        // Get all links
-        $siteMapData = $this->_module->buildSitemap();
+        // Get all models
+        $activeModels = $this->_module->getModels();
 
-        // Separated links on page
-        $dataProvider = new ArrayDataProvider([
-            'allModels' => $siteMapData,
-            'pagination' => [
-                'pageSize' => $this->_module->perPage,
-                /*
-                 * Break up a large sitemap into a set of smaller sitemaps to prevent your
-                 * server from being overloaded by serving a large file to Google. A sitemap
-                 * file can't contain more than 50,000 URLs and must be no larger than 50 MB
-                 * uncompressed.
-                 * Source: https://support.google.com/webmasters/answer/183668?hl=en
-                 */
-                'pageSizeLimit' => [10, 50000]
-            ],
-        ]);
+        $pages = [];
+        foreach ($activeModels as $activeModel) {
+            $pages = ArrayHelper::merge($pages, $activeModel->buildPages());
+        }
 
-        $dataProvider->prepare();
-        $pageCount = $dataProvider->pagination->getPageCount();
+        $xmlData = Yii::$app->view->renderPhpFile(
+            $this->_module->viewPath . '/default/main-template.php',
+            ['urls' => $pages]
+        );
 
-        if ($pageCount > 1) {
-            $pages = [];
-
-            for ($page = 0; $page < $pageCount; $page++) {
-                $dataProvider->pagination->setPage($page);
-                $dataProvider->prepare(true);
-
-                $xmlData = Yii::$app->view->renderPhpFile(
-                    $this->_module->viewPath . '/default/page-template.php',
-                    ['urls' => $dataProvider->getModels()]
-                );
-
-                $fileName = "{$this->_module->pageFileName}{$page}.xml";
-                $filePath = "{$this->_pageDir}/{$fileName}";
-
-                if (file_put_contents($filePath, $xmlData)) {
-                    $pages[] = [
-                        'loc' => "/{$this->_module->pagesFolder}/{$fileName}",
-                        'lastmod' => time()
-                    ];
-
-                    echo "{$fileName} - OK\n";
-                }
-            }
-
-            $this->putToFile($pages, 'main-template');
-        } else {
-            $this->putToFile($siteMapData, 'page-template');
+        if (file_put_contents($this->_pathMainFile, $xmlData)) {
+            echo "{$this->_pathMainFile} - OK\n";
         }
     }
 
@@ -139,25 +104,8 @@ class SitemapController extends Controller
         FileHelper::createDirectory($this->_pageDir, 0777);
 
         // Delete sitemap file
-        if (file_exists($this->_pathSitemapFile)) {
-            unlink($this->_pathSitemapFile);
-        }
-    }
-
-    /**
-     * Writing data to a file
-     * @param $urls
-     * @param string $template
-     */
-    private function putToFile($urls, $template = 'page-template')
-    {
-        $xmlData = Yii::$app->view->renderPhpFile(
-            $this->_module->viewPath . '/default/' . $template . '.php',
-            ['urls' => $urls]
-        );
-
-        if (file_put_contents($this->_pathSitemapFile, $xmlData)) {
-            echo "{$this->_pathSitemapFile} - OK\n";
+        if (file_exists($this->_pathMainFile)) {
+            unlink($this->_pathMainFile);
         }
     }
 }
