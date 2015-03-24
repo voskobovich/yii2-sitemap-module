@@ -96,6 +96,6 @@ class Module extends \yii\base\Module
      */
     public function getPartsPath()
     {
-        return $this->getBasePath().'/sitemap_files';
+        return $this->getFilesPath() . '/sitemap_files';
     }
 }
