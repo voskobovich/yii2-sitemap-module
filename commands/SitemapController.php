@@ -4,9 +4,8 @@ namespace voskobovich\sitemap\commands;
 
 use Yii;
 use yii\console\Controller;
-use yii\data\ArrayDataProvider;
 use yii\helpers\FileHelper;
-use yii\helpers\Url;
+use yii\helpers\ArrayHelper;
 
 
 /**
