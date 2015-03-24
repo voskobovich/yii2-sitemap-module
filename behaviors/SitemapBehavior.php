@@ -118,7 +118,7 @@ class SitemapBehavior extends Behavior
 
         $basePath = $this->module->getBasePath();
         preg_match('/([A-Za-z]+)$/', get_class($owner), $matchResult);
-        $fileSuffix = strtolover($matchResult[0]);
+        $fileSuffix = strtolower($matchResult[0]);
 
         // Apply scopes
         if (is_callable($this->scope)) {
