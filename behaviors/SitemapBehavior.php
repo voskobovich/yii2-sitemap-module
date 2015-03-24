@@ -187,11 +187,11 @@ class SitemapBehavior extends Behavior
                 ['urls' => $pageUrls]
             );
 
-            $fileName = "/{$this->module->getPartsPath()}/{$fileSuffix}_{$page}.xml";
+            $fileUrl = "sitemap_files/{$fileSuffix}_{$page}.xml";
 
-            if (file_put_contents("{$basePath}/{$fileName}", $xmlData)) {
+            if (file_put_contents($basePath . '/' . $fileUrl, $xmlData)) {
                 $pages[] = [
-                    'loc' => $fileName,
+                    'loc' => $fileUrl,
                     'lastmod' => time()
                 ];
             }

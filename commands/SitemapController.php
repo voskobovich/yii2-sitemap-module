@@ -46,7 +46,7 @@ class SitemapController extends Controller
     {
         $this->_module = Yii::$app->getModule('sitemap');
         $this->_baseDir = $this->_module->getFilesPath();
-        $this->_pageDir = $this->_module->getPartsPath();
+        $this->_pageDir = $this->_baseDir . '/sitemap_files';
         $this->_pathMainFile = "{$this->_baseDir}/sitemap.xml";
     }
 

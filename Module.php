@@ -89,13 +89,4 @@ class Module extends \yii\base\Module
     {
         return Yii::getAlias('@app/../web');
     }
-
-    /**
-     * Get base path for sitemap files
-     * @return mixed
-     */
-    public function getPartsPath()
-    {
-        return $this->getFilesPath() . '/sitemap_files';
-    }
 }
