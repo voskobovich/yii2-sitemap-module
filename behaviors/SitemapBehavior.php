@@ -195,6 +195,8 @@ class SitemapBehavior extends Behavior
                     'loc' => $fileUrl,
                     'lastmod' => time()
                 ];
+
+                echo "OK: {$basePath}/{$fileUrl}\n";
             }
         }
 
